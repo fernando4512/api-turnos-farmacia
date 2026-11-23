@@ -1,0 +1,16 @@
+{
+  "name": "api-turnos-farmacia",
+  "version": "1.0.0",
+  "description": "API REST para gestión de turnos de solicitud de medicamentos en un servicio farmacéutico",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "keywords": ["api", "rest", "farmacia", "turnos", "express"],
+  "author": "Mosquera Arango Luis Fernando & Perea Córdoba Yeison Estiven",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}
