@@ -1,0 +1,1722 @@
+{
+  "info": {
+    "_postman_id": "bcdddb3f-0fe9-41a7-a561-f997f9d2ad30",
+    "name": "API Turnos Farmacia - Tu Inventario.com",
+    "description": "Pruebas completas de la API REST de Pendientes de Medicamentos.\n\n**Antes de ejecutar:** abre la pestaña *Variables* de la colección y en **Current value** pon el `usuario` y `password` de tu archivo `.env` (los valores por defecto `admin` / `farmacia2026` solo funcionan si el servidor no tiene `.env`).\n\n**Orden:** ejecuta la colección completa con *Run collection* (las carpetas 3 y 5 dependen entre sí). Como los datos están en memoria, reinicia el servidor si quieres empezar desde cero.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      {
+        "key": "username",
+        "value": "{{usuario}}",
+        "type": "string"
+      },
+      {
+        "key": "password",
+        "value": "{{password}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('Responde con Content-Type JSON', () => {",
+          "  // El JSON mal formado lo responde Express con HTML: se excluye",
+          "  if (pm.info.requestName === 'POST - JSON mal formado') return;",
+          "  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "usuario",
+      "value": "admin",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "farmacia2026",
+      "type": "string"
+    },
+    {
+      "key": "turnoPrioritarioId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "turnoRegularId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "turnoSinPrioridadId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "turnoDecimalId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "turnoConsecutivoId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. General",
+      "description": "Ruta raíz pública (no requiere autenticación).",
+      "item": [
+        {
+          "name": "GET / - Información de la API (pública)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Responde JSON', () => pm.response.to.be.json);",
+                  "const body = pm.response.json();",
+                  "pm.test('Tiene sistema, descripcion y endpoints', () => {",
+                  "  pm.expect(body).to.have.all.keys('sistema', 'descripcion', 'endpoints', 'autenticacion');",
+                  "});",
+                  "pm.test('Lista los 3 endpoints de turnos', () => {",
+                  "  pm.expect(body.endpoints).to.have.all.keys('GET /api/turnos', 'GET /api/turnos/:id', 'POST /api/turnos');",
+                  "});",
+                  "pm.test('Informa que se requiere autenticación', () => pm.expect(body.autenticacion).to.include('Basic Auth'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": []
+            },
+            "description": "La ruta raíz es pública y describe los endpoints.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Autenticación (401)",
+      "description": "Peticiones sin credenciales o con credenciales inválidas deben ser rechazadas.",
+      "item": [
+        {
+          "name": "GET /api/turnos - Sin credenciales",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Incluye encabezado WWW-Authenticate Basic', () => {",
+                  "  pm.response.to.have.header('WWW-Authenticate');",
+                  "  pm.expect(pm.response.headers.get('WWW-Authenticate')).to.match(/^Basic/);",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.eql(\"Se requiere autenticación con usuario y contraseña\"));",
+                  "pm.test('No expone datos de turnos', () => pm.expect(pm.response.json()).to.not.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "Sin encabezado Authorization.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "POST /api/turnos - Sin credenciales (no debe crear)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Incluye encabezado WWW-Authenticate Basic', () => {",
+                  "  pm.response.to.have.header('WWW-Authenticate');",
+                  "  pm.expect(pm.response.headers.get('WWW-Authenticate')).to.match(/^Basic/);",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.eql(\"Se requiere autenticación con usuario y contraseña\"));",
+                  "pm.test('No expone datos de turnos', () => pm.expect(pm.response.json()).to.not.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "Intento de crear un pendiente sin autenticarse.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombrePaciente\": \"Carlos Andrés López\",\n  \"documentoPaciente\": \"1088345672\",\n  \"medicamento\": \"Tramadol\",\n  \"concentracion\": \"50mg Caja x 10 tabletas\",\n  \"cantidad\": 2,\n  \"precioBase\": 45000,\n  \"servicio\": \"Mostrador\",\n  \"fechaHora\": \"2026-11-25 09:30\",\n  \"prioritario\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "GET /api/turnos/1 - Sin credenciales",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Incluye encabezado WWW-Authenticate Basic', () => {",
+                  "  pm.response.to.have.header('WWW-Authenticate');",
+                  "  pm.expect(pm.response.headers.get('WWW-Authenticate')).to.match(/^Basic/);",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.eql(\"Se requiere autenticación con usuario y contraseña\"));",
+                  "pm.test('No expone datos de turnos', () => pm.expect(pm.response.json()).to.not.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos",
+                "1"
+              ]
+            },
+            "description": "Consulta por ID sin autenticarse.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "GET /api/turnos - Contraseña incorrecta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Incluye encabezado WWW-Authenticate Basic', () => {",
+                  "  pm.response.to.have.header('WWW-Authenticate');",
+                  "  pm.expect(pm.response.headers.get('WWW-Authenticate')).to.match(/^Basic/);",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.eql(\"Usuario o contraseña incorrectos\"));",
+                  "pm.test('No expone datos de turnos', () => pm.expect(pm.response.json()).to.not.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "Usuario correcto, contraseña incorrecta.",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{usuario}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "contraseña-incorrecta",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/turnos - Usuario incorrecto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Incluye encabezado WWW-Authenticate Basic', () => {",
+                  "  pm.response.to.have.header('WWW-Authenticate');",
+                  "  pm.expect(pm.response.headers.get('WWW-Authenticate')).to.match(/^Basic/);",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.eql(\"Usuario o contraseña incorrectos\"));",
+                  "pm.test('No expone datos de turnos', () => pm.expect(pm.response.json()).to.not.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "Usuario inexistente, contraseña correcta.",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "usuario-inexistente",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/turnos - Credenciales vacías",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Incluye encabezado WWW-Authenticate Basic', () => {",
+                  "  pm.response.to.have.header('WWW-Authenticate');",
+                  "  pm.expect(pm.response.headers.get('WWW-Authenticate')).to.match(/^Basic/);",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.eql(\"Usuario o contraseña incorrectos\"));",
+                  "pm.test('No expone datos de turnos', () => pm.expect(pm.response.json()).to.not.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "Usuario y contraseña vacíos.",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/turnos - Esquema Bearer (no soportado)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Incluye encabezado WWW-Authenticate Basic', () => {",
+                  "  pm.response.to.have.header('WWW-Authenticate');",
+                  "  pm.expect(pm.response.headers.get('WWW-Authenticate')).to.match(/^Basic/);",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.eql(\"Se requiere autenticación con usuario y contraseña\"));",
+                  "pm.test('No expone datos de turnos', () => pm.expect(pm.response.json()).to.not.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer token-falso"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "Solo se acepta el esquema Basic.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "GET /api/turnos - Basic sin ':' (formato inválido)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Incluye encabezado WWW-Authenticate Basic', () => {",
+                  "  pm.response.to.have.header('WWW-Authenticate');",
+                  "  pm.expect(pm.response.headers.get('WWW-Authenticate')).to.match(/^Basic/);",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.eql(\"Formato de credenciales inválido\"));",
+                  "pm.test('No expone datos de turnos', () => pm.expect(pm.response.json()).to.not.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Basic c2luc2VwYXJhZG9y"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "Credenciales en base64 sin el separador ':' (\"sinseparador\").",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "GET /api/turnos - Mayúsculas/minúsculas en contraseña",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Invierte mayúsculas/minúsculas de la contraseña configurada",
+                  "const p = pm.variables.get('password') || '';",
+                  "const inv = p.split('').map(c => c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()).join('');",
+                  "pm.request.auth.update([{key:'username', value: pm.variables.get('usuario')}, {key:'password', value: inv + (inv === p ? 'x' : '')}], 'basic');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Incluye encabezado WWW-Authenticate Basic', () => {",
+                  "  pm.response.to.have.header('WWW-Authenticate');",
+                  "  pm.expect(pm.response.headers.get('WWW-Authenticate')).to.match(/^Basic/);",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.eql(\"Usuario o contraseña incorrectos\"));",
+                  "pm.test('No expone datos de turnos', () => pm.expect(pm.response.json()).to.not.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "La contraseña distingue mayúsculas de minúsculas.",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{usuario}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Crear pendientes - casos exitosos (201)",
+      "description": "Registro de pendientes y verificación de la regla de negocio (recargo del 16% sobre precioBase × cantidad).",
+      "item": [
+        {
+          "name": "POST - Pendiente PRIORITARIO (recargo 16%)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const req = JSON.parse(pm.request.body.raw);",
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('Tiene id numérico', () => pm.expect(body.id).to.be.a('number').and.to.be.above(0));",
+                  "pm.test('Conserva los datos enviados', () => {",
+                  "  ['nombrePaciente','documentoPaciente','medicamento','concentracion','cantidad','precioBase','servicio','fechaHora']",
+                  "    .forEach(k => pm.expect(body[k], k).to.eql(req[k]));",
+                  "});",
+                  "pm.test('prioritario = true', () => pm.expect(body.prioritario).to.eql(true));",
+                  "pm.test('estado = \"pendiente\"', () => pm.expect(body.estado).to.eql('pendiente'));",
+                  "pm.test('subtotal = precioBase × cantidad', () => {",
+                  "  pm.expect(body.subtotal).to.eql(parseFloat((req.precioBase * req.cantidad).toFixed(2)));",
+                  "});",
+                  "pm.test('porcentajeRecargoAplicado = \"16%\"', () => pm.expect(body.porcentajeRecargoAplicado).to.eql('16%'));",
+                  "pm.test('totalPagar = subtotal + 16% de recargo', () => {",
+                  "  const subtotal = req.precioBase * req.cantidad;",
+                  "  const esperado = parseFloat((subtotal + subtotal * 16 / 100).toFixed(2));",
+                  "  pm.expect(body.totalPagar).to.eql(esperado);",
+                  "});",
+                  "pm.test('Tiempo de respuesta < 1000 ms', () => pm.expect(pm.response.responseTime).to.be.below(1000));",
+                  "pm.collectionVariables.set('turnoPrioritarioId', body.id);",
+                  "pm.collectionVariables.set('turnoPrioritarioId_total', body.totalPagar);",
+                  "pm.test('Ejemplo del README: totalPagar = 104400', () => pm.expect(body.totalPagar).to.eql(104400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "2 × 45.000 = 90.000 → 90.000 + 16% = 104.400",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombrePaciente\": \"Carlos Andrés López\",\n  \"documentoPaciente\": \"1088345672\",\n  \"medicamento\": \"Tramadol\",\n  \"concentracion\": \"50mg Caja x 10 tabletas\",\n  \"cantidad\": 2,\n  \"precioBase\": 45000,\n  \"servicio\": \"Mostrador\",\n  \"fechaHora\": \"2026-11-25 09:30\",\n  \"prioritario\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST - Pendiente REGULAR (sin recargo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const req = JSON.parse(pm.request.body.raw);",
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('Tiene id numérico', () => pm.expect(body.id).to.be.a('number').and.to.be.above(0));",
+                  "pm.test('Conserva los datos enviados', () => {",
+                  "  ['nombrePaciente','documentoPaciente','medicamento','concentracion','cantidad','precioBase','servicio','fechaHora']",
+                  "    .forEach(k => pm.expect(body[k], k).to.eql(req[k]));",
+                  "});",
+                  "pm.test('prioritario = false', () => pm.expect(body.prioritario).to.eql(false));",
+                  "pm.test('estado = \"pendiente\"', () => pm.expect(body.estado).to.eql('pendiente'));",
+                  "pm.test('subtotal = precioBase × cantidad', () => {",
+                  "  pm.expect(body.subtotal).to.eql(parseFloat((req.precioBase * req.cantidad).toFixed(2)));",
+                  "});",
+                  "pm.test('porcentajeRecargoAplicado = \"0%\"', () => pm.expect(body.porcentajeRecargoAplicado).to.eql('0%'));",
+                  "pm.test('totalPagar = subtotal + 0% de recargo', () => {",
+                  "  const subtotal = req.precioBase * req.cantidad;",
+                  "  const esperado = parseFloat((subtotal + subtotal * 0 / 100).toFixed(2));",
+                  "  pm.expect(body.totalPagar).to.eql(esperado);",
+                  "});",
+                  "pm.test('Tiempo de respuesta < 1000 ms', () => pm.expect(pm.response.responseTime).to.be.below(1000));",
+                  "pm.collectionVariables.set('turnoRegularId', body.id);",
+                  "pm.collectionVariables.set('turnoRegularId_total', body.totalPagar);",
+                  "pm.test('Ejemplo del README: totalPagar = 12000', () => pm.expect(body.totalPagar).to.eql(12000));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "1 × 12.000 = 12.000 → sin recargo = 12.000",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombrePaciente\": \"María Fernanda Ríos\",\n  \"documentoPaciente\": \"42156789\",\n  \"medicamento\": \"Ibuprofeno\",\n  \"concentracion\": \"400mg Caja x 30 tabletas\",\n  \"cantidad\": 1,\n  \"precioBase\": 12000,\n  \"servicio\": \"Domicilios\",\n  \"fechaHora\": \"2026-11-26 14:00\",\n  \"prioritario\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST - Sin campo prioritario (se asume false)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const req = JSON.parse(pm.request.body.raw);",
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('Tiene id numérico', () => pm.expect(body.id).to.be.a('number').and.to.be.above(0));",
+                  "pm.test('Conserva los datos enviados', () => {",
+                  "  ['nombrePaciente','documentoPaciente','medicamento','concentracion','cantidad','precioBase','servicio','fechaHora']",
+                  "    .forEach(k => pm.expect(body[k], k).to.eql(req[k]));",
+                  "});",
+                  "pm.test('prioritario = false', () => pm.expect(body.prioritario).to.eql(false));",
+                  "pm.test('estado = \"pendiente\"', () => pm.expect(body.estado).to.eql('pendiente'));",
+                  "pm.test('subtotal = precioBase × cantidad', () => {",
+                  "  pm.expect(body.subtotal).to.eql(parseFloat((req.precioBase * req.cantidad).toFixed(2)));",
+                  "});",
+                  "pm.test('porcentajeRecargoAplicado = \"0%\"', () => pm.expect(body.porcentajeRecargoAplicado).to.eql('0%'));",
+                  "pm.test('totalPagar = subtotal + 0% de recargo', () => {",
+                  "  const subtotal = req.precioBase * req.cantidad;",
+                  "  const esperado = parseFloat((subtotal + subtotal * 0 / 100).toFixed(2));",
+                  "  pm.expect(body.totalPagar).to.eql(esperado);",
+                  "});",
+                  "pm.test('Tiempo de respuesta < 1000 ms', () => pm.expect(pm.response.responseTime).to.be.below(1000));",
+                  "pm.collectionVariables.set('turnoSinPrioridadId', body.id);",
+                  "pm.collectionVariables.set('turnoSinPrioridadId_total', body.totalPagar);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "Si no se envía 'prioritario', se toma como false y no hay recargo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombrePaciente\": \"Carlos Andrés López\",\n  \"documentoPaciente\": \"1088345672\",\n  \"medicamento\": \"Acetaminofén\",\n  \"concentracion\": \"500mg Caja x 20\",\n  \"cantidad\": 3,\n  \"precioBase\": 8500,\n  \"servicio\": \"EPS\",\n  \"fechaHora\": \"2026-11-25 09:30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST - Precio con decimales (redondeo a 2 decimales)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const req = JSON.parse(pm.request.body.raw);",
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('Tiene id numérico', () => pm.expect(body.id).to.be.a('number').and.to.be.above(0));",
+                  "pm.test('Conserva los datos enviados', () => {",
+                  "  ['nombrePaciente','documentoPaciente','medicamento','concentracion','cantidad','precioBase','servicio','fechaHora']",
+                  "    .forEach(k => pm.expect(body[k], k).to.eql(req[k]));",
+                  "});",
+                  "pm.test('prioritario = true', () => pm.expect(body.prioritario).to.eql(true));",
+                  "pm.test('estado = \"pendiente\"', () => pm.expect(body.estado).to.eql('pendiente'));",
+                  "pm.test('subtotal = precioBase × cantidad', () => {",
+                  "  pm.expect(body.subtotal).to.eql(parseFloat((req.precioBase * req.cantidad).toFixed(2)));",
+                  "});",
+                  "pm.test('porcentajeRecargoAplicado = \"16%\"', () => pm.expect(body.porcentajeRecargoAplicado).to.eql('16%'));",
+                  "pm.test('totalPagar = subtotal + 16% de recargo', () => {",
+                  "  const subtotal = req.precioBase * req.cantidad;",
+                  "  const esperado = parseFloat((subtotal + subtotal * 16 / 100).toFixed(2));",
+                  "  pm.expect(body.totalPagar).to.eql(esperado);",
+                  "});",
+                  "pm.test('Tiempo de respuesta < 1000 ms', () => pm.expect(pm.response.responseTime).to.be.below(1000));",
+                  "pm.collectionVariables.set('turnoDecimalId', body.id);",
+                  "pm.collectionVariables.set('turnoDecimalId_total', body.totalPagar);",
+                  "pm.test('totalPagar tiene máximo 2 decimales', () => {",
+                  "  pm.expect(body.totalPagar.toString()).to.match(/^\\d+(\\.\\d{1,2})?$/);",
+                  "});",
+                  "pm.test('totalPagar = 42962.93', () => pm.expect(body.totalPagar).to.eql(42962.93));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "3 × 12.345,67 = 37.037,01 → +16% = 42.962,93",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombrePaciente\": \"Carlos Andrés López\",\n  \"documentoPaciente\": \"1088345672\",\n  \"medicamento\": \"Insulina glargina\",\n  \"concentracion\": \"100 UI/mL\",\n  \"cantidad\": 3,\n  \"precioBase\": 12345.67,\n  \"servicio\": \"Hospitalario\",\n  \"fechaHora\": \"2026-11-25 09:30\",\n  \"prioritario\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST - Los IDs son consecutivos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const req = JSON.parse(pm.request.body.raw);",
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('Tiene id numérico', () => pm.expect(body.id).to.be.a('number').and.to.be.above(0));",
+                  "pm.test('Conserva los datos enviados', () => {",
+                  "  ['nombrePaciente','documentoPaciente','medicamento','concentracion','cantidad','precioBase','servicio','fechaHora']",
+                  "    .forEach(k => pm.expect(body[k], k).to.eql(req[k]));",
+                  "});",
+                  "pm.test('prioritario = false', () => pm.expect(body.prioritario).to.eql(false));",
+                  "pm.test('estado = \"pendiente\"', () => pm.expect(body.estado).to.eql('pendiente'));",
+                  "pm.test('subtotal = precioBase × cantidad', () => {",
+                  "  pm.expect(body.subtotal).to.eql(parseFloat((req.precioBase * req.cantidad).toFixed(2)));",
+                  "});",
+                  "pm.test('porcentajeRecargoAplicado = \"0%\"', () => pm.expect(body.porcentajeRecargoAplicado).to.eql('0%'));",
+                  "pm.test('totalPagar = subtotal + 0% de recargo', () => {",
+                  "  const subtotal = req.precioBase * req.cantidad;",
+                  "  const esperado = parseFloat((subtotal + subtotal * 0 / 100).toFixed(2));",
+                  "  pm.expect(body.totalPagar).to.eql(esperado);",
+                  "});",
+                  "pm.test('Tiempo de respuesta < 1000 ms', () => pm.expect(pm.response.responseTime).to.be.below(1000));",
+                  "pm.collectionVariables.set('turnoConsecutivoId', body.id);",
+                  "pm.collectionVariables.set('turnoConsecutivoId_total', body.totalPagar);",
+                  "pm.test('id mayor que el del turno anterior', () => {",
+                  "  pm.expect(body.id).to.be.above(Number(pm.collectionVariables.get('turnoDecimalId')));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "El nuevo id debe ser mayor que los creados antes.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombrePaciente\": \"Carlos Andrés López\",\n  \"documentoPaciente\": \"1088345672\",\n  \"medicamento\": \"Tramadol\",\n  \"concentracion\": \"50mg Caja x 10 tabletas\",\n  \"cantidad\": 1,\n  \"precioBase\": 1000,\n  \"servicio\": \"Mostrador\",\n  \"fechaHora\": \"2026-11-25 09:30\",\n  \"prioritario\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Crear pendientes - validaciones (400)",
+      "description": "Datos inválidos deben ser rechazados con 400 Bad Request.",
+      "item": [
+        {
+          "name": "POST - Body vacío (faltan todos los campos)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Responde JSON con campo error', () => {",
+                  "  pm.response.to.be.json;",
+                  "  pm.expect(pm.response.json()).to.have.property('error').that.is.a('string');",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.include(\"Faltan campos obligatorios\"));",
+                  "pm.test('No se creó ningún turno (sin id)', () => pm.expect(pm.response.json()).to.not.have.property('id'));",
+                  "pm.test('camposFaltantes lista los 8 campos', () => pm.expect(pm.response.json().camposFaltantes).to.eql([\"nombrePaciente\", \"documentoPaciente\", \"medicamento\", \"concentracion\", \"cantidad\", \"precioBase\", \"servicio\", \"fechaHora\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "Se envía {}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST - Faltan algunos campos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Responde JSON con campo error', () => {",
+                  "  pm.response.to.be.json;",
+                  "  pm.expect(pm.response.json()).to.have.property('error').that.is.a('string');",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.include(\"Faltan campos obligatorios\"));",
+                  "pm.test('No se creó ningún turno (sin id)', () => pm.expect(pm.response.json()).to.not.have.property('id'));",
+                  "pm.test('camposFaltantes lista exactamente los que faltan', () => {",
+                  "  pm.expect(pm.response.json().camposFaltantes).to.eql(['documentoPaciente','concentracion','cantidad','precioBase','servicio','fechaHora']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "Solo se envían nombre, medicamento y prioritario.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombrePaciente\": \"Pedro Gómez\",\n  \"medicamento\": \"Losartán\",\n  \"prioritario\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST - Campo de texto vacío",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Responde JSON con campo error', () => {",
+                  "  pm.response.to.be.json;",
+                  "  pm.expect(pm.response.json()).to.have.property('error').that.is.a('string');",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.include(\"Faltan campos obligatorios\"));",
+                  "pm.test('No se creó ningún turno (sin id)', () => pm.expect(pm.response.json()).to.not.have.property('id'));",
+                  "pm.test('camposFaltantes = [\"nombrePaciente\"]', () => pm.expect(pm.response.json().camposFaltantes).to.eql(['nombrePaciente']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "nombrePaciente = \"\" cuenta como faltante.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombrePaciente\": \"\",\n  \"documentoPaciente\": \"1088345672\",\n  \"medicamento\": \"Tramadol\",\n  \"concentracion\": \"50mg Caja x 10 tabletas\",\n  \"cantidad\": 2,\n  \"precioBase\": 45000,\n  \"servicio\": \"Mostrador\",\n  \"fechaHora\": \"2026-11-25 09:30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST - cantidad negativa",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Responde JSON con campo error', () => {",
+                  "  pm.response.to.be.json;",
+                  "  pm.expect(pm.response.json()).to.have.property('error').that.is.a('string');",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.include(\"El campo \\\"cantidad\\\" debe ser un número mayor a cero\"));",
+                  "pm.test('No se creó ningún turno (sin id)', () => pm.expect(pm.response.json()).to.not.have.property('id'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "cantidad = -5",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombrePaciente\": \"Carlos Andrés López\",\n  \"documentoPaciente\": \"1088345672\",\n  \"medicamento\": \"Tramadol\",\n  \"concentracion\": \"50mg Caja x 10 tabletas\",\n  \"cantidad\": -5,\n  \"precioBase\": 45000,\n  \"servicio\": \"Mostrador\",\n  \"fechaHora\": \"2026-11-25 09:30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST - cantidad = 0",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Responde JSON con campo error', () => {",
+                  "  pm.response.to.be.json;",
+                  "  pm.expect(pm.response.json()).to.have.property('error').that.is.a('string');",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.include(\"El campo \\\"cantidad\\\" debe ser un número mayor a cero\"));",
+                  "pm.test('No se creó ningún turno (sin id)', () => pm.expect(pm.response.json()).to.not.have.property('id'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "cantidad = 0",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombrePaciente\": \"Carlos Andrés López\",\n  \"documentoPaciente\": \"1088345672\",\n  \"medicamento\": \"Tramadol\",\n  \"concentracion\": \"50mg Caja x 10 tabletas\",\n  \"cantidad\": 0,\n  \"precioBase\": 45000,\n  \"servicio\": \"Mostrador\",\n  \"fechaHora\": \"2026-11-25 09:30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST - cantidad como texto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Responde JSON con campo error', () => {",
+                  "  pm.response.to.be.json;",
+                  "  pm.expect(pm.response.json()).to.have.property('error').that.is.a('string');",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.include(\"El campo \\\"cantidad\\\" debe ser un número mayor a cero\"));",
+                  "pm.test('No se creó ningún turno (sin id)', () => pm.expect(pm.response.json()).to.not.have.property('id'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "cantidad = \"2\" (string)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombrePaciente\": \"Carlos Andrés López\",\n  \"documentoPaciente\": \"1088345672\",\n  \"medicamento\": \"Tramadol\",\n  \"concentracion\": \"50mg Caja x 10 tabletas\",\n  \"cantidad\": \"2\",\n  \"precioBase\": 45000,\n  \"servicio\": \"Mostrador\",\n  \"fechaHora\": \"2026-11-25 09:30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST - precioBase = 0",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Responde JSON con campo error', () => {",
+                  "  pm.response.to.be.json;",
+                  "  pm.expect(pm.response.json()).to.have.property('error').that.is.a('string');",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.include(\"El campo \\\"precioBase\\\" debe ser un número mayor a cero\"));",
+                  "pm.test('No se creó ningún turno (sin id)', () => pm.expect(pm.response.json()).to.not.have.property('id'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "precioBase = 0",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombrePaciente\": \"Carlos Andrés López\",\n  \"documentoPaciente\": \"1088345672\",\n  \"medicamento\": \"Tramadol\",\n  \"concentracion\": \"50mg Caja x 10 tabletas\",\n  \"cantidad\": 2,\n  \"precioBase\": 0,\n  \"servicio\": \"Mostrador\",\n  \"fechaHora\": \"2026-11-25 09:30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST - precioBase negativo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Responde JSON con campo error', () => {",
+                  "  pm.response.to.be.json;",
+                  "  pm.expect(pm.response.json()).to.have.property('error').that.is.a('string');",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.include(\"El campo \\\"precioBase\\\" debe ser un número mayor a cero\"));",
+                  "pm.test('No se creó ningún turno (sin id)', () => pm.expect(pm.response.json()).to.not.have.property('id'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "precioBase = -1000",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombrePaciente\": \"Carlos Andrés López\",\n  \"documentoPaciente\": \"1088345672\",\n  \"medicamento\": \"Tramadol\",\n  \"concentracion\": \"50mg Caja x 10 tabletas\",\n  \"cantidad\": 2,\n  \"precioBase\": -1000,\n  \"servicio\": \"Mostrador\",\n  \"fechaHora\": \"2026-11-25 09:30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST - precioBase como texto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Responde JSON con campo error', () => {",
+                  "  pm.response.to.be.json;",
+                  "  pm.expect(pm.response.json()).to.have.property('error').that.is.a('string');",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.include(\"El campo \\\"precioBase\\\" debe ser un número mayor a cero\"));",
+                  "pm.test('No se creó ningún turno (sin id)', () => pm.expect(pm.response.json()).to.not.have.property('id'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "precioBase = \"45000\" (string)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombrePaciente\": \"Carlos Andrés López\",\n  \"documentoPaciente\": \"1088345672\",\n  \"medicamento\": \"Tramadol\",\n  \"concentracion\": \"50mg Caja x 10 tabletas\",\n  \"cantidad\": 2,\n  \"precioBase\": \"45000\",\n  \"servicio\": \"Mostrador\",\n  \"fechaHora\": \"2026-11-25 09:30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST - prioritario como texto \"true\"",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Responde JSON con campo error', () => {",
+                  "  pm.response.to.be.json;",
+                  "  pm.expect(pm.response.json()).to.have.property('error').that.is.a('string');",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.include(\"El campo \\\"prioritario\\\" debe ser true o false\"));",
+                  "pm.test('No se creó ningún turno (sin id)', () => pm.expect(pm.response.json()).to.not.have.property('id'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "prioritario debe ser booleano, no string.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombrePaciente\": \"Carlos Andrés López\",\n  \"documentoPaciente\": \"1088345672\",\n  \"medicamento\": \"Tramadol\",\n  \"concentracion\": \"50mg Caja x 10 tabletas\",\n  \"cantidad\": 2,\n  \"precioBase\": 45000,\n  \"servicio\": \"Mostrador\",\n  \"fechaHora\": \"2026-11-25 09:30\",\n  \"prioritario\": \"true\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST - prioritario numérico (1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Responde JSON con campo error', () => {",
+                  "  pm.response.to.be.json;",
+                  "  pm.expect(pm.response.json()).to.have.property('error').that.is.a('string');",
+                  "});",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.include(\"El campo \\\"prioritario\\\" debe ser true o false\"));",
+                  "pm.test('No se creó ningún turno (sin id)', () => pm.expect(pm.response.json()).to.not.have.property('id'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "prioritario = 1 no es booleano.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombrePaciente\": \"Carlos Andrés López\",\n  \"documentoPaciente\": \"1088345672\",\n  \"medicamento\": \"Tramadol\",\n  \"concentracion\": \"50mg Caja x 10 tabletas\",\n  \"cantidad\": 2,\n  \"precioBase\": 45000,\n  \"servicio\": \"Mostrador\",\n  \"fechaHora\": \"2026-11-25 09:30\",\n  \"prioritario\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST - JSON mal formado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "El body no es JSON válido.",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"nombrePaciente\": \"Ana\", \"cantidad\": 2, ",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Consultar pendientes (200 / 400 / 404)",
+      "description": "Ejecutar después de la carpeta 3: usa los IDs guardados en variables.",
+      "item": [
+        {
+          "name": "GET /api/turnos - Listar todos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Responde un arreglo JSON', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "const lista = pm.response.json();",
+                  "pm.test('Contiene al menos los 5 turnos creados en la carpeta 3', () => pm.expect(lista.length).to.be.at.least(5));",
+                  "pm.test('Incluye los turnos creados (por id)', () => {",
+                  "  const ids = lista.map(t => t.id);",
+                  "  ['turnoPrioritarioId','turnoRegularId','turnoSinPrioridadId','turnoDecimalId','turnoConsecutivoId']",
+                  "    .forEach(v => pm.expect(ids, v).to.include(Number(pm.collectionVariables.get(v))));",
+                  "});",
+                  "pm.test('Cada turno tiene la estructura completa', () => {",
+                  "  lista.forEach(t => pm.expect(t).to.include.all.keys('id','nombrePaciente','documentoPaciente','medicamento','concentracion','cantidad','precioBase','prioritario','servicio','fechaHora','estado','subtotal','porcentajeRecargoAplicado','totalPagar'));",
+                  "});",
+                  "pm.test('Los IDs no se repiten', () => {",
+                  "  const ids = lista.map(t => t.id);",
+                  "  pm.expect(new Set(ids).size).to.eql(ids.length);",
+                  "});",
+                  "pm.test('Ningún turno se creó con las peticiones rechazadas (401/400)', () => {",
+                  "  // Solo deben existir turnos válidos: todos con cantidad y precio > 0 y prioritario booleano",
+                  "  lista.forEach(t => {",
+                  "    pm.expect(t.cantidad).to.be.above(0);",
+                  "    pm.expect(t.precioBase).to.be.above(0);",
+                  "    pm.expect(t.prioritario).to.be.a('boolean');",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos"
+              ]
+            },
+            "description": "Lista todos los pendientes registrados."
+          }
+        },
+        {
+          "name": "GET /api/turnos/:id - Turno prioritario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json();",
+                  "pm.test('Devuelve el turno con ese id', () => pm.expect(t.id).to.eql(Number(pm.collectionVariables.get('turnoPrioritarioId'))));",
+                  "pm.test('Es prioritario con recargo 16%', () => {",
+                  "  pm.expect(t.prioritario).to.eql(true);",
+                  "  pm.expect(t.porcentajeRecargoAplicado).to.eql('16%');",
+                  "});",
+                  "pm.test('totalPagar coincide con el de la creación', () => pm.expect(t.totalPagar).to.eql(Number(pm.collectionVariables.get('turnoPrioritarioId_total'))));",
+                  "pm.test('Devuelve un objeto, no un arreglo', () => pm.expect(t).to.be.an('object').and.not.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos/{{turnoPrioritarioId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos",
+                "{{turnoPrioritarioId}}"
+              ]
+            },
+            "description": "Consulta el turno prioritario creado antes."
+          }
+        },
+        {
+          "name": "GET /api/turnos/:id - Turno regular",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json();",
+                  "pm.test('Devuelve el turno con ese id', () => pm.expect(t.id).to.eql(Number(pm.collectionVariables.get('turnoRegularId'))));",
+                  "pm.test('No es prioritario y no tiene recargo', () => {",
+                  "  pm.expect(t.prioritario).to.eql(false);",
+                  "  pm.expect(t.porcentajeRecargoAplicado).to.eql('0%');",
+                  "  pm.expect(t.totalPagar).to.eql(t.subtotal);",
+                  "});",
+                  "pm.test('Datos del paciente correctos', () => {",
+                  "  pm.expect(t.nombrePaciente).to.eql('María Fernanda Ríos');",
+                  "  pm.expect(t.medicamento).to.eql('Ibuprofeno');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos/{{turnoRegularId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos",
+                "{{turnoRegularId}}"
+              ]
+            },
+            "description": "Consulta el turno regular creado antes."
+          }
+        },
+        {
+          "name": "GET /api/turnos/999999 - ID inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('Mensaje de error indica el id', () => pm.expect(pm.response.json().error).to.eql('No se encontró un pendiente con el ID 999999'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos",
+                "999999"
+              ]
+            },
+            "description": "No existe un turno con ese id."
+          }
+        },
+        {
+          "name": "GET /api/turnos/0 - ID cero",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('Responde con campo error', () => pm.expect(pm.response.json()).to.have.property('error'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos/0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos",
+                "0"
+              ]
+            },
+            "description": "Los IDs empiezan en 1."
+          }
+        },
+        {
+          "name": "GET /api/turnos/abc - ID no numérico",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Mensaje de error correcto', () => pm.expect(pm.response.json().error).to.eql('El ID debe ser un número válido'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/turnos/abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "turnos",
+                "abc"
+              ]
+            },
+            "description": "El id debe ser un número."
+          }
+        }
+      ]
+    }
+  ]
+}

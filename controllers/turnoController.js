@@ -70,6 +70,13 @@ const crearTurno = (req, res) => {
     });
   }
 
+  // Validar que "prioritario", si se envía, sea booleano (true/false)
+  if (prioritario !== undefined && typeof prioritario !== 'boolean') {
+    return res.status(400).json({
+      error: 'El campo "prioritario" debe ser true o false (booleano, sin comillas)'
+    });
+  }
+
   // Delegar la creación al servicio
   const nuevoTurno = turnoService.crearTurno({
     nombrePaciente,
@@ -78,7 +85,7 @@ const crearTurno = (req, res) => {
     concentracion,
     cantidad,
     precioBase,
-    prioritario: prioritario || false,
+    prioritario: prioritario === true,
     servicio,
     fechaHora
   });

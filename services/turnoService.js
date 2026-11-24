@@ -13,7 +13,8 @@
 //
 // Si el pendiente es PRIORITARIO (medicamentos de urgencia,
 // controlados o de alto costo), se cobra un recargo del 16%
-// sobre el precio base por gestión prioritaria de despacho.
+// sobre el subtotal (precioBase × cantidad) por gestión
+// prioritaria de despacho.
 // ============================================================
 
 const N = 8;
@@ -35,15 +36,17 @@ const obtenerPorId = (id) => {
 
 // Registrar un nuevo pendiente con cálculo de tarifa
 const crearTurno = (datos) => {
+  // precioBase es el precio unitario: el subtotal considera la cantidad
+  const subtotal = datos.precioBase * datos.cantidad;
   let totalPagar;
 
   if (datos.prioritario === true) {
     // Medicamento prioritario: se aplica recargo del 16%
-    // totalPagar = precioBase + (precioBase × porcentajeRecargo / 100)
-    totalPagar = datos.precioBase + (datos.precioBase * PORCENTAJE_RECARGO / 100);
+    // totalPagar = subtotal + (subtotal × porcentajeRecargo / 100)
+    totalPagar = subtotal + (subtotal * PORCENTAJE_RECARGO / 100);
   } else {
-    // Medicamento regular: total = precio base sin recargo
-    totalPagar = datos.precioBase;
+    // Medicamento regular: total = subtotal sin recargo
+    totalPagar = subtotal;
   }
 
   const nuevoTurno = {
@@ -58,7 +61,8 @@ const crearTurno = (datos) => {
     servicio: datos.servicio,
     fechaHora: datos.fechaHora,
     estado: 'pendiente',
-    porcentajeRecargoAplicado: datos.prioritario ? `${PORCENTAJE_RECARGO}%` : '0%',
+    subtotal: parseFloat(subtotal.toFixed(2)),
+    porcentajeRecargoAplicado: datos.prioritario === true ? `${PORCENTAJE_RECARGO}%` : '0%',
     totalPagar: parseFloat(totalPagar.toFixed(2))
   };
 

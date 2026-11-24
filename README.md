@@ -7,6 +7,7 @@
 | 8 | Mosquera Arango Luis Fernando |
 | 10 | Perea Córdoba Yeison Estiven |
 
+
 ## Valor de N y Porcentaje de Recargo
 
 - **Primer integrante en orden alfabético:** Mosquera Arango Luis Fernando (puesto #8 en la lista oficial)
@@ -28,16 +29,17 @@
 - `concentracion`: Concentración o presentación del medicamento (ej: "500mg", "10ml", "Caja x 30 tabletas").
 - `cantidad`: Cantidad de unidades requeridas.
 - `precioBase`: Precio unitario base del medicamento (en pesos colombianos).
-- `prioritario`: Indica si el pendiente requiere gestión prioritaria (`true`/`false`). Aplica para medicamentos de urgencia, controlados o de alto costo.
+- `prioritario`: Indica si el pendiente requiere gestión prioritaria (`true`/`false`, booleano sin comillas; si se omite se asume `false`). Aplica para medicamentos de urgencia, controlados o de alto costo.
 - `servicio`: Servicio o área que genera la solicitud (ej: "Mostrador", "Domicilios", "Hospitalario", "EPS").
 - `fechaHora`: Fecha y hora programada para el despacho.
 
-**Regla de negocio:** Si el pendiente es de atención prioritaria (`"prioritario": true`), se aplica un recargo del 16% sobre el precio base por gestión urgente de despacho. Si no es prioritario, el total a pagar es igual al precio base.
+**Regla de negocio:** Si el pendiente es de atención prioritaria (`"prioritario": true`), se aplica un recargo del 16% sobre el subtotal (precio base × cantidad) por gestión urgente de despacho. Si no es prioritario, el total a pagar es igual al subtotal.
 
 **Fórmula:**
 ```
-totalPagar = precioBase + (precioBase × 16 / 100)   // Si prioritario = true
-totalPagar = precioBase                               // Si prioritario = false
+subtotal   = precioBase × cantidad
+totalPagar = subtotal + (subtotal × 16 / 100)   // Si prioritario = true
+totalPagar = subtotal                           // Si prioritario = false
 ```
 
 ## Tecnologías Utilizadas
@@ -57,6 +59,8 @@ api-turnos-farmacia/
 │   └── turnoController.js    # Gestiona req/res, valida datos y asigna códigos HTTP
 ├── services/
 │   └── turnoService.js       # Lógica de negocio, cálculo de tarifas y gestión de datos
+├── middleware/
+│   └── auth.js               # Autenticación con usuario y contraseña (HTTP Basic Auth)
 ├── package.json
 ├── .gitignore
 └── README.md
@@ -67,6 +71,7 @@ api-turnos-farmacia/
 - **`index.js`**: Inicializa la aplicación Express, configura el middleware `express.json()`, conecta las rutas y levanta el servidor en el puerto 3000.
 - **`routes/`**: Define únicamente los endpoints (`GET /`, `GET /:id`, `POST /`) y los asocia con los métodos del controlador correspondiente. No contiene lógica de negocio.
 - **`controllers/`**: Recibe la petición (`req`) y la respuesta (`res`), valida los datos de entrada (campos faltantes, tipos de datos, valores numéricos inválidos) y retorna los códigos de estado HTTP apropiados (200, 201, 400, 404).
+- **`middleware/`**: Verifica el usuario y la contraseña de cada petición a `/api/turnos` antes de que llegue a las rutas. Si faltan o son incorrectos responde 401 Unauthorized.
 - **`services/`**: Contiene toda la lógica de negocio pura: el almacenamiento de datos en memoria, el parámetro N, el cálculo del porcentaje de recargo y la fórmula del total a pagar.
 
 ## Instalación y Ejecución
@@ -87,13 +92,62 @@ npm start
 
 El servidor se ejecutará en `http://localhost:3000`
 
+## Autenticación (usuario y contraseña)
+
+Todos los endpoints de `/api/turnos` están protegidos con **HTTP Basic Auth**. La ruta raíz `/` es pública.
+
+1. Crea un archivo `.env` en la raíz del proyecto (no se sube al repositorio, está en `.gitignore`):
+
+   ```
+   API_USUARIO=tu_usuario
+   API_PASSWORD="tu_contraseña"
+   ```
+
+   > Si la contraseña contiene `#`, escríbela entre comillas dobles; sin comillas, todo lo que va después del `#` se toma como comentario.
+
+2. Envía las credenciales en cada petición:
+   - **Postman:** pestaña *Authorization* → *Basic Auth* → escribe usuario y contraseña.
+   - **curl:** `curl -u tu_usuario:tu_contraseña http://localhost:3000/api/turnos`
+
+Si no existe el archivo `.env`, el servidor usa las credenciales por defecto `admin` / `farmacia2026` y muestra una advertencia en consola.
+
+| Situación | Respuesta |
+|-----------|-----------|
+| Sin credenciales | 401 `{"error": "Se requiere autenticación con usuario y contraseña"}` |
+| Usuario o contraseña incorrectos | 401 `{"error": "Usuario o contraseña incorrectos"}` |
+| Credenciales correctas | La respuesta normal del endpoint |
+
+## Pruebas con Postman
+
+La carpeta `postman/` contiene la colección **`API-Turnos-Farmacia.postman_collection.json`**, con 33 peticiones y 199 verificaciones automáticas.
+
+1. En Postman: **Import** → selecciona el archivo.
+2. En la colección, pestaña **Variables**, escribe en *Current value* el `usuario` y `password` de tu `.env` (y `baseUrl` si usas otro puerto).
+3. Inicia el servidor (`npm start`) y ejecuta **Run collection** en orden.
+
+| Carpeta | Qué prueba |
+|---------|------------|
+| 1. General | Ruta raíz pública |
+| 2. Autenticación (401) | Sin credenciales, usuario/contraseña incorrectos, esquema Bearer, formato inválido, mayúsculas |
+| 3. Crear pendientes (201) | Prioritario (16%), regular, sin `prioritario`, decimales, IDs consecutivos |
+| 4. Validaciones (400) | Campos faltantes, valores ≤ 0, tipos incorrectos, `prioritario` no booleano, JSON mal formado |
+| 5. Consultar (200/400/404) | Listar todos, consulta por ID, ID inexistente, ID no numérico |
+
+También se puede ejecutar por consola con Newman:
+
+```bash
+npx newman run postman/API-Turnos-Farmacia.postman_collection.json --env-var "usuario=tu_usuario" --env-var "password=tu_contraseña"
+```
+
+> Los datos están en memoria: reinicia el servidor antes de cada ejecución si quieres empezar con la lista vacía.
+
 ## Endpoints Disponibles
 
 | Método | Ruta | Descripción | Código Éxito | Código Error |
 |--------|------|-------------|-------------|-------------|
-| GET | `/api/turnos` | Obtener todos los pendientes | 200 OK | — |
-| GET | `/api/turnos/:id` | Obtener un pendiente por ID | 200 OK | 404 Not Found |
-| POST | `/api/turnos` | Registrar un nuevo pendiente | 201 Created | 400 Bad Request |
+| GET | `/api/turnos` | Obtener todos los pendientes | 200 OK | 401 Unauthorized |
+| GET | `/api/turnos/:id` | Obtener un pendiente por ID | 200 OK | 401 Unauthorized, 404 Not Found |
+| POST | `/api/turnos` | Registrar un nuevo pendiente | 201 Created | 400 Bad Request, 401 Unauthorized |
 
 ## Ejemplos de Pruebas con JSON
 
@@ -133,12 +187,13 @@ Content-Type: application/json
   "servicio": "Mostrador",
   "fechaHora": "2026-11-25 09:30",
   "estado": "pendiente",
+  "subtotal": 90000,
   "porcentajeRecargoAplicado": "16%",
-  "totalPagar": 52200
+  "totalPagar": 104400
 }
 ```
 
-> **Cálculo:** totalPagar = 45000 + (45000 × 16 / 100) = 45000 + 7200 = **52200**
+> **Cálculo:** subtotal = 45000 × 2 = 90000 → totalPagar = 90000 + (90000 × 16 / 100) = 90000 + 14400 = **104400**
 
 ---
 
@@ -176,12 +231,13 @@ Content-Type: application/json
   "servicio": "Domicilios",
   "fechaHora": "2026-11-26 14:00",
   "estado": "pendiente",
+  "subtotal": 12000,
   "porcentajeRecargoAplicado": "0%",
   "totalPagar": 12000
 }
 ```
 
-> **Cálculo:** totalPagar = precioBase = **12000** (sin recargo)
+> **Cálculo:** subtotal = 12000 × 1 = 12000 → totalPagar = subtotal = **12000** (sin recargo)
 
 ### Caso de Error de Validación - POST /api/turnos (400 Bad Request)
 
